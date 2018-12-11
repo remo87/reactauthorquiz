@@ -1,6 +1,8 @@
 import React from 'react';
 import ReactDOM from 'react-dom';
 import { BrowserRouter, Route, withRouter } from "react-router-dom";
+import * as Redux from "redux";
+import * as ReactRedux from "react-redux";
 import './index.css';
 import * as serviceWorker from './serviceWorker';
 import AuthorQuiz from './AuthorQuiz';
@@ -52,6 +54,7 @@ function getTurnData() {
     const allBooks = authors.reduce(function(p, c, i) {
         return p.concat(c.books);
     }, []);
+    console.log(allBooks)
     const fourRandomBooks = shuffle(allBooks).slice(0,4);
     const answer = sample(fourRandomBooks);
 
@@ -68,6 +71,30 @@ function resetState() {
   };
 }
 
+function reducer(state = {authors, turnData: getTurnData(), highlight: '',},action){
+  switch(action.type){
+    case 'ANSWER_SELECTED': 
+      const isCorrect = state.turnData.author.books.some((book) => book === action.answer);
+      return Object.assign({}, state, {
+        highlight: isCorrect?'correct':'wrong',
+      });
+    case 'CONTINUE': 
+      return Object.assign({},state,{
+        highlight: '',
+        turnData: getTurnData(state.authors),
+      });
+    case 'ADD_AUTHOR':
+          return Object.assign({}, state, {
+            authors: state.authors.push(action.author)
+          });
+    default: return state;
+  }
+  return state;
+}
+
+let store = Redux.createStore(
+  reducer,
+  window.__REDUX_DEVTOOLS_EXTENSION__ && window.__REDUX_DEVTOOLS_EXTENSION__());
 let state = resetState();
 
 function onAnswerSelected(answer) {
@@ -76,32 +103,15 @@ function onAnswerSelected(answer) {
   render();
 }
 
-function App() {
-  return (<AuthorQuiz 
-            {...state} 
-            onAnswerSelected={onAnswerSelected} 
-            onContinue={()=>{
-              state = resetState();
-              render();
-            }}/>
-          );
-}
-
-const AuthorWrapper = withRouter(({history}) =>
-  <AddAuthorForm onAddAuthor={(author) => {
-    authors.push(author);
-    history.push('/');
-    console.log(authors)
-  }} />
-);
-
 function render() {
   ReactDOM.render(
   <BrowserRouter>
-    <React.Fragment>
-      <Route exact path="/" component={App} />
-      <Route path="/add" component={AuthorWrapper} />
-    </React.Fragment>
+    <ReactRedux.Provider store={store}>
+      <React.Fragment>
+        <Route exact path="/" component={AuthorQuiz} />
+        <Route path="/add" component={AddAuthorForm} />
+      </React.Fragment>
+    </ReactRedux.Provider>
   </BrowserRouter>, document.getElementById('root'));
 }
 
